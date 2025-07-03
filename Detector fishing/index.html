@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phishing Detector</title>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-light: #e8f0fe;
+            --secondary: #4285f4;
+            --dark: #202124;
+            --light: #f8f9fa;
+            --danger: #ea4335;
+            --success: #34a853;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--primary-light);
+            margin: 0;
+            padding: 0;
+            color: var(--dark);
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        
+        .input-group {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #dfe1e5;
+            border-radius: 8px 0 0 8px;
+            font-size: 16px;
+            outline: none;
+            transition: border 0.3s;
+        }
+        
+        input[type="text"]:focus {
+            border-color: var(--primary);
+        }
+        
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background-color: var(--secondary);
+        }
+        
+        .result-container {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: var(--light);
+            display: none;
+        }
+        
+        .result-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .result-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 20px;
+        }
+        
+        .safe {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .danger {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .url-info {
+            margin-top: 20px;
+        }
+        
+        .url-info p {
+            margin: 8px 0;
+            font-size: 15px;
+        }
+        
+        .features {
+            margin-top: 20px;
+        }
+        
+        .features h3 {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .feature-item {
+            background-color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .error {
+            color: var(--danger);
+            padding: 15px;
+            background: #ffeeee;
+            border-radius: 8px;
+        }
+
+        .feat-name {
+            font-weight: 500;
+            display: inline-block;
+            width: 70%;
+        }
+
+        .feat-value {
+            float: right;
+        }
+
+        .feat-value.danger {
+            color: var(--danger);
+        }
+
+        .feat-value.safe {
+            color: var(--success);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Phishing Detector</h1>
+            <p>Analiza cualquier URL para detectar posibles amenazas de phishing</p>
+        </header>
+        
+        <div class="input-group">
+            <input type="text" id="urlInput" placeholder="Ingresa la URL a analizar...">
+            <button onclick="analyzeUrl()">Analizar</button>
+        </div>
+        
+        <div id="resultContainer" class="result-container">
+            <div class="result-header">
+                <div id="resultIcon" class="result-icon"></div>
+                <h2 id="resultTitle">Resultado</h2>
+            </div>
+            
+            <div class="url-info">
+                <p><strong>URL analizada:</strong> <span id="analyzedUrl"></span></p>
+                <p><strong>Dominio:</strong> <span id="domainInfo"></span></p>
+                <p><strong>Protocolo:</strong> <span id="protocolInfo"></span></p>
+            </div>
+            
+            <div class="features">
+                <h3>Características detectadas</h3>
+                <div id="featuresList" class="features-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function analyzeUrl() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) {
+        alert("Por favor ingresa una URL");
+        return;
+    }
+
+    // Mostrar estado de carga
+    const resultContainer = document.getElementById('resultContainer');
+    resultContainer.style.display = 'block';
+    resultContainer.innerHTML = '<p>🔍 Analizando URL...</p>';
+
+    try {
+        const response = await fetch('http://localhost:5000/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url })
+        });
+
+        if (!response.ok) throw new Error("Error en el análisis");
+
+        const data = await response.json();
+        
+        // Mostrar resultados (actualiza esta función para manejar la respuesta completa)
+        showResults(
+            data.url, 
+            data.domain, 
+            data.is_phishing, 
+            data.features,  // Asegúrate que tu backend envíe las 30 características
+            data.score      // Opcional: porcentaje de probabilidad
+        );
+
+    } catch (error) {
+        resultContainer.innerHTML = `
+            <div class="error">
+                <p>❌ Error al analizar la URL</p>
+                <p>${error.message}</p>
+            </div>
+        `;
+        console.error("Error:", error);
+    }
+}
+        
+     function showResults(url, domain, isPhishing, features, score = null) {
+    const resultContainer = document.getElementById('resultContainer');
+    
+    resultContainer.innerHTML = `
+        <div class="result-header">
+            <div id="resultIcon" class="result-icon ${isPhishing ? 'danger' : 'safe'}">
+                ${isPhishing ? '⚠️' : '✓'}
+            </div>
+            <div>
+                <h2 id="resultTitle">${isPhishing ? '⚠️ PHISHING DETECTADO' : '✅ URL SEGURA'}</h2>
+                ${score ? `<p>Confianza: ${score}%</p>` : ''}
+            </div>
+        </div>
+        
+        <div class="url-info">
+            <p><strong>URL analizada:</strong> <span>${url}</span></p>
+            <p><strong>Dominio:</strong> <span>${domain}</span></p>
+            <p><strong>Protocolo:</strong> <span>${url.startsWith('https') ? 'HTTPS (Seguro)' : 'HTTP (No seguro)'}</span></p>
+        </div>
+        
+        <div class="features">
+            <h3>Características detectadas (${features.length}/30)</h3>
+            <div id="featuresList" class="features-list"></div>
+        </div>
+    `;
+
+    // Llenar características
+    const featuresList = document.getElementById('featuresList');
+    features.forEach((feat, index) => {
+        featuresList.innerHTML += `
+            <div class="feature-item">
+                <span class="feat-name">${columnas_originales[index]}:</span>
+                <span class="feat-value ${feat === 1 ? 'danger' : 'safe'}">${feat === 1 ? 'Sí' : 'No'}</span>
+            </div>
+        `;
+    });
+}   
+
+    </script>
+</body>
+</html>
